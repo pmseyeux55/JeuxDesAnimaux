@@ -10,6 +10,7 @@ from game.animal import Animal
 from game.resources import Fruit
 from ui.gui import GUI
 from ui.menu import MainMenu
+from ui.lobby import Lobby  # Importer la classe Lobby
 from game.config import (
     LION_START_POSITION, TIGER_START_POSITION,
     GREEN_FRUIT_POSITIONS, RED_FRUIT_POSITIONS
@@ -126,25 +127,46 @@ def main():
                     game_instance = Game()
                     print("Instance de jeu créée")
                     
-                    # Créer une instance de NetworkedGUI
-                    print("Création de l'interface réseau...")
-                    gui = NetworkedGUI(game_instance, client)
-                    print("Interface réseau créée")
+                    # Créer une surface pygame pour le lobby
+                    screen = pygame.display.set_mode((900, 600))
+                    pygame.display.set_caption("Jeu des Animaux - Lobby")
                     
-                    print("Configuration de l'animal...")
-                    # Utiliser l'écran de configuration pour créer le jeu
-                    # et passer le callback pour signaler que la configuration est terminée
-                    game = GUI.setup_game(setup_complete_callback=gui.setup_complete_callback)
+                    # Créer et exécuter le lobby
+                    print("Affichage du lobby...")
+                    lobby = Lobby(screen, "127.0.0.1", is_host=True, client=client)
+                    lobby_result = lobby.run()
                     
-                    # Si l'utilisateur a fermé la fenêtre de configuration sans terminer
-                    if game is None:
-                        print("Configuration annulée")
+                    if lobby_result["action"] == "quit":
+                        print("Fermeture du jeu depuis le lobby")
                         client.disconnect()
                         return
                     
-                    print("Lancement de l'interface graphique...")
-                    # Lancer l'interface graphique en mode réseau
-                    gui.run()
+                    if lobby_result["action"] == "back":
+                        print("Retour au menu principal depuis le lobby")
+                        client.disconnect()
+                        return
+                    
+                    if lobby_result["action"] == "start_game":
+                        print("Démarrage de la partie depuis le lobby")
+                        # Créer une instance de NetworkedGUI
+                        print("Création de l'interface réseau...")
+                        gui = NetworkedGUI(game_instance, client)
+                        print("Interface réseau créée")
+                        
+                        print("Configuration de l'animal...")
+                        # Utiliser l'écran de configuration pour créer le jeu
+                        # et passer le callback pour signaler que la configuration est terminée
+                        game = GUI.setup_game(setup_complete_callback=gui.setup_complete_callback)
+                        
+                        # Si l'utilisateur a fermé la fenêtre de configuration sans terminer
+                        if game is None:
+                            print("Configuration annulée")
+                            client.disconnect()
+                            return
+                        
+                        print("Lancement de l'interface graphique...")
+                        # Lancer l'interface graphique en mode réseau
+                        gui.run()
                     
                     # Déconnecter le client
                     print("Déconnexion du client...")
@@ -185,25 +207,46 @@ def main():
                     game_instance = Game()
                     print("Instance de jeu créée")
                     
-                    # Créer une instance de NetworkedGUI
-                    print("Création de l'interface réseau...")
-                    gui = NetworkedGUI(game_instance, client)
-                    print("Interface réseau créée")
+                    # Créer une surface pygame pour le lobby
+                    screen = pygame.display.set_mode((900, 600))
+                    pygame.display.set_caption("Jeu des Animaux - Lobby")
                     
-                    print("Configuration de l'animal...")
-                    # Utiliser l'écran de configuration pour créer le jeu
-                    # et passer le callback pour signaler que la configuration est terminée
-                    game = GUI.setup_game(setup_complete_callback=gui.setup_complete_callback)
+                    # Créer et exécuter le lobby
+                    print("Affichage du lobby...")
+                    lobby = Lobby(screen, host, is_host=False, client=client)
+                    lobby_result = lobby.run()
                     
-                    # Si l'utilisateur a fermé la fenêtre de configuration sans terminer
-                    if game is None:
-                        print("Configuration annulée")
+                    if lobby_result["action"] == "quit":
+                        print("Fermeture du jeu depuis le lobby")
                         client.disconnect()
                         return
                     
-                    print("Lancement de l'interface graphique...")
-                    # Lancer l'interface graphique en mode réseau
-                    gui.run()
+                    if lobby_result["action"] == "back":
+                        print("Retour au menu principal depuis le lobby")
+                        client.disconnect()
+                        return
+                    
+                    if lobby_result["action"] == "start_game":
+                        print("Démarrage de la partie depuis le lobby")
+                        # Créer une instance de NetworkedGUI
+                        print("Création de l'interface réseau...")
+                        gui = NetworkedGUI(game_instance, client)
+                        print("Interface réseau créée")
+                        
+                        print("Configuration de l'animal...")
+                        # Utiliser l'écran de configuration pour créer le jeu
+                        # et passer le callback pour signaler que la configuration est terminée
+                        game = GUI.setup_game(setup_complete_callback=gui.setup_complete_callback)
+                        
+                        # Si l'utilisateur a fermé la fenêtre de configuration sans terminer
+                        if game is None:
+                            print("Configuration annulée")
+                            client.disconnect()
+                            return
+                        
+                        print("Lancement de l'interface graphique...")
+                        # Lancer l'interface graphique en mode réseau
+                        gui.run()
                     
                     # Déconnecter le client
                     print("Déconnexion du client...")

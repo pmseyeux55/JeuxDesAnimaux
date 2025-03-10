@@ -25,7 +25,8 @@ class GameStateEncoder:
                 "game_over": game.game_over,
                 "winner": game.winner.name if game.winner else None,
                 "animals": [],
-                "resources": []
+                "resources": [],
+                "players": []  # Liste des joueurs connectés
             }
             
             # Encoder les animaux
@@ -50,6 +51,14 @@ class GameStateEncoder:
                     "thirst": animal.thirst
                 }
                 state["animals"].append(animal_data)
+                
+                # Ajouter l'animal à la liste des joueurs
+                player_data = {
+                    "id": game.animals.index(animal) + 1,
+                    "name": animal.name,
+                    "ready": True  # Par défaut, les animaux sont prêts
+                }
+                state["players"].append(player_data)
             
             # Encoder les ressources
             for position, resource in game.terrain.resources.items():
@@ -102,6 +111,7 @@ class GameStateEncoder:
                 "winner": None,
                 "animals": [],
                 "resources": [],
+                "players": [],
                 "terrain": {
                     "width": 10,
                     "height": 10,
@@ -138,6 +148,12 @@ class GameStateEncoder:
             
             # Si l'état contient un indicateur de configuration terminée, le conserver
             setup_complete = state.get("setup_complete", False)
+            
+            # Si l'état contient un indicateur de démarrage de partie, le conserver
+            game_started = state.get("game_started", False)
+            
+            # Conserver la liste des joueurs
+            players = state.get("players", [])
             
             # Mettre à jour les attributs de base du jeu
             game.current_turn = state.get("current_turn", 0)
@@ -221,8 +237,10 @@ class GameStateEncoder:
                             game.winner = animal
                             break
             
-            # Ajouter l'indicateur de configuration terminée
+            # Restaurer les indicateurs
             state["setup_complete"] = setup_complete
+            state["game_started"] = game_started
+            state["players"] = players
             
             return game
         except Exception as e:

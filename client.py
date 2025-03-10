@@ -89,8 +89,31 @@ class NetworkedGUI(GUI):
                 return
                 
             print("Mise à jour de l'état du jeu...")
+            
+            # Sauvegarder notre animal avant la mise à jour
+            our_animal = None
+            if self.game.animals and len(self.game.animals) > 0:
+                # Trouver notre animal en fonction de notre ID
+                for animal in self.game.animals:
+                    if self.game.animals.index(animal) + 1 == self.player_id:
+                        our_animal = animal
+                        break
+            
             # Mettre à jour le jeu avec le nouvel état
             GameStateEncoder.decode_game_state(game_state, self.game)
+            
+            # Si nous avions un animal et qu'il a été remplacé, le restaurer
+            if our_animal and self.game.animals:
+                # Vérifier si notre animal est toujours dans la liste
+                our_animal_found = False
+                for animal in self.game.animals:
+                    if self.game.animals.index(animal) + 1 == self.player_id:
+                        our_animal_found = True
+                        break
+                
+                # Si notre animal n'est plus dans la liste, l'ajouter
+                if not our_animal_found:
+                    self.game.add_animal(our_animal, our_animal.position)
             
             # Mettre à jour l'animal actuel
             self.current_animal = self.game.get_next_animal_to_play()
@@ -209,7 +232,17 @@ class NetworkedGUI(GUI):
         print("Callback setup_complete_callback appelé")
         try:
             # Mettre à jour le jeu
-            self.game = game
+            # Conserver uniquement notre animal et les ressources
+            if self.game.animals:
+                # Supprimer tous les animaux
+                for animal in list(self.game.animals):
+                    self.game.terrain.remove_animal(animal)
+                self.game.animals = []
+            
+            # Ajouter notre animal au jeu
+            if game.animals and len(game.animals) > 0:
+                our_animal = game.animals[0]  # Dans le mode multijoueur, il n'y a qu'un seul animal
+                self.game.add_animal(our_animal, our_animal.position)
             
             # Marquer la configuration comme terminée
             self.setup_complete = True

@@ -191,6 +191,60 @@ class GameServer:
             with self.lock:
                 # Mettre à jour l'état du jeu avec les données reçues
                 action_data = message.get("data", {})
+                
+                # Gérer le démarrage de la partie par l'hôte
+                if "game_started" in action_data and client_id == 1:  # Seul l'hôte (ID 1) peut démarrer la partie
+                    print(f"L'hôte a démarré la partie")
+                    self.game_state["game_started"] = True
+                
+                # Gérer le statut "prêt" du joueur
+                if "ready" in action_data:
+                    # Si le jeu n'a pas encore commencé, mettre à jour le statut du joueur
+                    if not self.game_state.get("game_started", False):
+                        # Initialiser la liste des joueurs si elle n'existe pas
+                        if "players" not in self.game_state:
+                            self.game_state["players"] = []
+                            
+                            # Ajouter l'hôte (joueur 1) s'il n'est pas déjà dans la liste
+                            host_found = False
+                            for player in self.game_state["players"]:
+                                if player["id"] == 1:
+                                    host_found = True
+                                    break
+                            
+                            if not host_found:
+                                self.game_state["players"].append({
+                                    "id": 1,
+                                    "name": "Hôte",
+                                    "ready": False
+                                })
+                        
+                        # Mettre à jour le statut du joueur
+                        player_found = False
+                        for player in self.game_state["players"]:
+                            if player["id"] == client_id:
+                                player["ready"] = action_data["ready"]
+                                player_found = True
+                                break
+                        
+                        # Si le joueur n'est pas dans la liste, l'ajouter
+                        if not player_found:
+                            self.game_state["players"].append({
+                                "id": client_id,
+                                "name": f"Joueur {client_id}",
+                                "ready": action_data["ready"]
+                            })
+                
+                # Si le message contient un indicateur de configuration terminée
+                if "setup_complete" in action_data:
+                    # Mettre à jour le statut du joueur
+                    if "players" in self.game_state:
+                        for player in self.game_state["players"]:
+                            if player["id"] == client_id:
+                                player["ready"] = True
+                                break
+                
+                # Mettre à jour le reste de l'état du jeu
                 self.game_state.update(action_data)
                 print(f"État du jeu mis à jour avec les données du client {client_address}")
             

@@ -28,6 +28,7 @@ class MainMenu:
         self.title_font = pygame.font.SysFont(None, 72)
         self.button_font = pygame.font.SysFont(None, 48)
         self.info_font = pygame.font.SysFont(None, 24)
+        self.ip_font = pygame.font.SysFont(None, 36)  # Police plus grande pour l'IP
         
         # Boutons
         button_width = 300
@@ -76,13 +77,13 @@ class MainMenu:
         
         # Informations pour l'écran multijoueur
         self.multiplayer_info = [
-            f"Votre adresse IP: {self.local_ip}",
-            "Port: 5555",
+            "Pour jouer en multijoueur:",
             "",
-            "Partagez ces informations avec votre ami pour qu'il puisse se connecter.",
+            "1. Un joueur doit héberger la partie (cliquez sur 'Héberger une partie')",
+            "2. L'autre joueur doit rejoindre en entrant l'IP de l'hôte ci-dessous",
             "",
-            "Appuyez sur 'Héberger une partie' pour démarrer le serveur.",
-            "Votre ami doit utiliser './client.py --host VOTRE_IP' pour se connecter."
+            "Si vous êtes l'hôte, partagez votre adresse IP avec l'autre joueur.",
+            "Si vous êtes le client, entrez l'adresse IP de l'hôte dans le champ ci-dessous."
         ]
         
         # Boutons pour l'écran multijoueur
@@ -117,6 +118,14 @@ class MainMenu:
             "active": False,
             "placeholder": "Adresse IP du serveur"
         }
+        
+        # Rectangle pour mettre en évidence l'adresse IP
+        self.ip_highlight_rect = pygame.Rect(
+            (self.screen_width - 300) // 2,
+            230,
+            300,
+            40
+        )
     
     def get_local_ip(self):
         """Obtient l'adresse IP locale de la machine
@@ -272,8 +281,29 @@ class MainMenu:
     
     def draw_multiplayer_screen(self):
         """Dessine l'écran multijoueur"""
+        # Dessiner le titre
+        title = self.title_font.render("Mode Multijoueur", True, BLACK)
+        title_rect = title.get_rect(center=(self.screen_width // 2, 80))
+        self.screen.blit(title, title_rect)
+        
+        # Dessiner un rectangle de mise en évidence pour l'adresse IP
+        ip_highlight_rect = pygame.Rect(
+            (self.screen_width - 400) // 2,
+            120,
+            400,
+            50
+        )
+        pygame.draw.rect(self.screen, (230, 230, 255), ip_highlight_rect)
+        pygame.draw.rect(self.screen, BLUE, ip_highlight_rect, 2)
+        
+        # Dessiner l'adresse IP en gros et en gras
+        ip_font = pygame.font.SysFont(None, 36)
+        ip_text = ip_font.render(f"Votre IP: {self.local_ip}", True, BLUE)
+        ip_rect = ip_text.get_rect(center=ip_highlight_rect.center)
+        self.screen.blit(ip_text, ip_rect)
+        
         # Dessiner les informations
-        y_offset = 150
+        y_offset = 180
         for line in self.multiplayer_info:
             text = self.info_font.render(line, True, BLACK)
             text_rect = text.get_rect(center=(self.screen_width // 2, y_offset))
