@@ -103,27 +103,35 @@ class Lobby:
             dict: Informations sur l'action choisie par l'utilisateur
         """
         clock = pygame.time.Clock()
+        result = {"action": "back"}  # Valeur par défaut si la boucle est interrompue
+        
+        print(f"Démarrage du lobby (hôte: {self.is_host})")
         
         while self.running:
             # Gérer les événements
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    print("Événement QUIT détecté")
                     self.running = False
-                    return {"action": "quit"}
+                    result = {"action": "quit"}
+                    break
                 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     # Gérer les clics de souris
                     if event.button == 1:  # Clic gauche
-                        mouse_pos = pygame.mouse.get_pos()
+                        mouse_pos = event.pos
+                        print(f"Clic à la position {mouse_pos}")
                         
                         # Vérifier si le bouton de retour a été cliqué
                         if self.back_button["rect"].collidepoint(mouse_pos):
-                            print("Bouton retour cliqué")
+                            print(f"Bouton retour cliqué (rect: {self.back_button['rect']})")
                             self.running = False
-                            return {"action": "back"}
+                            result = {"action": "back"}
+                            break
                         
                         # Vérifier si le bouton de démarrage a été cliqué (seulement pour l'hôte)
                         elif self.is_host and self.start_button["visible"] and self.start_button["active"] and self.start_button["rect"].collidepoint(mouse_pos):
+                            print("Bouton démarrer cliqué")
                             # L'hôte démarre la partie
                             self.running = False
                             
@@ -131,10 +139,12 @@ class Lobby:
                             if self.client:
                                 self.client.send_action({"game_started": True})
                             
-                            return {"action": "start_game"}
+                            result = {"action": "start_game"}
+                            break
                         
                         # Vérifier si le bouton "Prêt" a été cliqué (seulement pour les clients)
                         elif not self.is_host and self.ready_button["visible"] and self.ready_button["active"] and self.ready_button["rect"].collidepoint(mouse_pos):
+                            print("Bouton prêt cliqué")
                             # Le client se marque comme prêt
                             self.ready = not self.ready
                             self.ready_button["text"] = "Annuler" if self.ready else "Prêt"
@@ -145,6 +155,10 @@ class Lobby:
                             if self.client:
                                 self.client.send_action({"ready": self.ready})
             
+            # Si la boucle a été interrompue, sortir
+            if not self.running:
+                break
+            
             # Mettre à jour la liste des joueurs
             current_time = time.time()
             if current_time - self.last_update > self.update_interval:
@@ -153,8 +167,10 @@ class Lobby:
             
             # Vérifier si la partie a commencé (pour les clients)
             if not self.is_host and self.game_started:
+                print("La partie a commencé (détecté par le client)")
                 self.running = False
-                return {"action": "start_game"}
+                result = {"action": "start_game"}
+                break
             
             # Mettre à jour l'affichage
             self.screen.fill(WHITE)
@@ -250,8 +266,8 @@ class Lobby:
             pygame.display.flip()
             clock.tick(60)
         
-        # Par défaut, retourner au menu principal
-        return {"action": "back"}
+        print(f"Sortie du lobby avec résultat: {result}")
+        return result
     
     def update_players(self):
         """Met à jour la liste des joueurs connectés"""

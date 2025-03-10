@@ -100,7 +100,8 @@ class MainMenu:
                 "text": "Rejoindre une partie",
                 "action": "join_game",
                 "color": GREEN,
-                "hover_color": (150, 255, 150)
+                "hover_color": (150, 255, 150),
+                "original_text": "Rejoindre une partie"  # Sauvegarder le texte original
             },
             {
                 "rect": pygame.Rect(button_x, 350 + 2 * (button_height + button_margin), button_width, button_height),
@@ -197,6 +198,14 @@ class MainMenu:
                                         self.running = False
                                         return {"action": "host_game"}
                                     elif action == "join_game":
+                                        # Au lieu de quitter immédiatement, activer le champ de saisie
+                                        # et changer le texte du bouton pour "Confirmer"
+                                        self.ip_input["active"] = True
+                                        button["text"] = "Confirmer la connexion"
+                                        button["action"] = "confirm_join"
+                                        # Mettre à jour le texte d'information
+                                        self.multiplayer_info.append("Entrez l'adresse IP et cliquez sur 'Confirmer la connexion'")
+                                    elif action == "confirm_join":
                                         self.running = False
                                         return {
                                             "action": "join_game",
@@ -310,6 +319,13 @@ class MainMenu:
             self.screen.blit(text, text_rect)
             y_offset += 30
         
+        # Dessiner le champ de saisie avec un texte explicatif au-dessus
+        if self.ip_input["active"] or any(button["action"] == "confirm_join" for button in self.multiplayer_buttons):
+            # Dessiner le texte "Entrez l'adresse IP:" au-dessus du champ
+            ip_label = self.info_font.render("Entrez l'adresse IP du serveur:", True, BLUE)
+            ip_label_rect = ip_label.get_rect(center=(self.screen_width // 2, self.ip_input["rect"].top - 20))
+            self.screen.blit(ip_label, ip_label_rect)
+        
         # Dessiner le champ de saisie
         pygame.draw.rect(self.screen, WHITE, self.ip_input["rect"])
         pygame.draw.rect(self.screen, BLACK if not self.ip_input["active"] else BLUE, self.ip_input["rect"], 2)
@@ -362,4 +378,33 @@ class MainMenu:
         # Dessiner le texte du bouton
         text = self.button_font.render(back_button["text"], True, WHITE)
         text_rect = text.get_rect(center=back_button["rect"].center)
-        self.screen.blit(text, text_rect) 
+        self.screen.blit(text, text_rect)
+    
+    def show_multiplayer_screen(self):
+        """Affiche directement l'écran multijoueur et retourne le résultat"""
+        self.current_screen = "multiplayer"
+        self.reset_multiplayer_screen()
+        return self.run()
+    
+    def reset_multiplayer_screen(self):
+        """Réinitialise l'écran multijoueur à son état initial"""
+        # Réinitialiser le champ de saisie
+        self.ip_input["text"] = ""
+        self.ip_input["active"] = False
+        
+        # Réinitialiser les boutons
+        for button in self.multiplayer_buttons:
+            if "original_text" in button:
+                button["text"] = button["original_text"]
+                button["action"] = "join_game"
+        
+        # Réinitialiser les informations
+        self.multiplayer_info = [
+            "Pour jouer en multijoueur:",
+            "",
+            "1. Un joueur doit héberger la partie (cliquez sur 'Héberger une partie')",
+            "2. L'autre joueur doit rejoindre en entrant l'IP de l'hôte ci-dessous",
+            "",
+            "Si vous êtes l'hôte, partagez votre adresse IP avec l'autre joueur.",
+            "Si vous êtes le client, entrez l'adresse IP de l'hôte dans le champ ci-dessous."
+        ] 
