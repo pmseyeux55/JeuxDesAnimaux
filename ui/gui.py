@@ -124,6 +124,7 @@ class SetupScreen:
         self.font = pygame.font.SysFont(None, 36)
         self.title_font = pygame.font.SysFont(None, 48)
         self.small_font = pygame.font.SysFont(None, 24)
+        self.button_font = pygame.font.SysFont(None, 30)  # Ajout de la police pour les boutons
         
         # Calculer les points minimums requis pour chaque animal
         min_points = (

@@ -176,7 +176,7 @@ class GameClient:
         elif message_type == "game_update":
             # Mise à jour de l'état du jeu
             print("Mise à jour de l'état du jeu reçue")
-            self.game_state = message.get("data", {})
+            self.game_state = message.get("state", {})
             
             # Appeler les callbacks de mise à jour du jeu
             print("Appel des callbacks de mise à jour du jeu...")

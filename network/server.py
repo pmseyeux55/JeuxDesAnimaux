@@ -96,9 +96,39 @@ class GameServer:
                 self.clients.append(client_info)
                 print(f"Client ajouté avec ID {client_info['id']}")
                 
+                # Mettre à jour la liste des joueurs dans l'état du jeu
+                with self.lock:
+                    if "players" not in self.game_state:
+                        self.game_state["players"] = []
+                    
+                    # Vérifier si le joueur existe déjà dans la liste
+                    player_found = False
+                    for player in self.game_state["players"]:
+                        if player["id"] == client_info["id"]:
+                            player_found = True
+                            break
+                    
+                    # Ajouter le joueur s'il n'existe pas
+                    if not player_found:
+                        self.game_state["players"].append({
+                            "id": client_info["id"],
+                            "name": f"Joueur {client_info['id']}",
+                            "ready": False
+                        })
+                
                 # Envoyer l'ID au client
                 print(f"Envoi de l'ID {client_info['id']} au client...")
-                self.send_to_client(client_socket, {"type": "connection", "id": client_info["id"]})
+                self.send_to_client(client_socket, {
+                    "type": "connection",
+                    "id": client_info["id"]
+                })
+                
+                # Diffuser l'état du jeu mis à jour à tous les clients
+                print("Diffusion de l'état du jeu mis à jour à tous les clients...")
+                self.broadcast({
+                    "type": "game_update",
+                    "state": self.game_state
+                })
                 
                 # Démarrer un thread pour gérer ce client
                 print(f"Démarrage du thread de gestion pour le client {address}...")
