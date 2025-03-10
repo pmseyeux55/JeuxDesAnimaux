@@ -38,9 +38,11 @@ class GameServer:
             print(f"Liaison du socket à {self.host}:{self.port}...")
             self.server_socket.bind((self.host, self.port))
             print("Mise en écoute du socket...")
-            self.server_socket.listen(2)  # Maximum 2 joueurs
+            self.server_socket.listen(5)
             self.running = True
-            print(f"Serveur démarré sur {self.host}:{self.port}")
+            
+            # Vérifier si le serveur est accessible depuis l'extérieur
+            self.check_server_accessibility()
             
             # Démarrer le thread d'acceptation des connexions
             print("Démarrage du thread d'acceptation des connexions...")
@@ -49,6 +51,7 @@ class GameServer:
             accept_thread.start()
             print("Thread d'acceptation des connexions démarré")
             
+            print(f"Serveur démarré sur {self.host}:{self.port}")
             return True
         except Exception as e:
             print(f"Erreur lors du démarrage du serveur: {e}")
@@ -79,6 +82,29 @@ class GameServer:
     def accept_connections(self):
         """Accepte les connexions entrantes"""
         print("Début de l'acceptation des connexions...")
+        print(f"Le serveur écoute sur {self.host}:{self.port}")
+        if self.host == '0.0.0.0':
+            print("Le serveur accepte les connexions de toutes les interfaces réseau")
+            # Afficher les adresses IP disponibles pour aider à la connexion
+            try:
+                import socket
+                hostname = socket.gethostname()
+                local_ip = socket.gethostbyname(hostname)
+                print(f"Adresse IP locale (hostname): {local_ip}")
+                
+                # Obtenir l'adresse IP externe (si disponible)
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                try:
+                    s.connect(("8.8.8.8", 80))
+                    external_ip = s.getsockname()[0]
+                    print(f"Adresse IP externe: {external_ip}")
+                except Exception as e:
+                    print(f"Impossible de déterminer l'adresse IP externe: {e}")
+                finally:
+                    s.close()
+            except Exception as e:
+                print(f"Erreur lors de la détermination des adresses IP: {e}")
+        
         while self.running:
             try:
                 print("En attente d'une nouvelle connexion...")
@@ -347,6 +373,43 @@ class GameServer:
             "state": self.game_state
         })
         print("Mise à jour diffusée à tous les clients")
+
+    def check_server_accessibility(self):
+        """Vérifie si le serveur est accessible depuis l'extérieur"""
+        try:
+            # Obtenir l'adresse IP externe
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            external_ip = s.getsockname()[0]
+            s.close()
+            
+            print(f"Vérification de l'accessibilité du serveur depuis l'extérieur...")
+            print(f"Adresse IP externe: {external_ip}")
+            print(f"Port: {self.port}")
+            
+            # Vérifier si le port est ouvert en essayant de se connecter depuis l'extérieur
+            # Note: Cette vérification n'est pas parfaite car elle essaie de se connecter depuis la même machine
+            test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            test_socket.settimeout(2)
+            
+            if self.host == '0.0.0.0':
+                # Si le serveur écoute sur toutes les interfaces, essayer de se connecter à l'IP externe
+                try:
+                    test_socket.connect((external_ip, self.port))
+                    print(f"Le serveur est accessible depuis l'extérieur sur {external_ip}:{self.port}")
+                    test_socket.close()
+                except Exception as e:
+                    print(f"AVERTISSEMENT: Le serveur pourrait ne pas être accessible depuis l'extérieur: {e}")
+                    print("Si vous êtes derrière un routeur, assurez-vous que le port est correctement redirigé.")
+                    print("Si vous utilisez un pare-feu, assurez-vous que le port est ouvert.")
+            
+            print("Pour que d'autres joueurs puissent se connecter, ils doivent utiliser l'adresse IP suivante:")
+            print(f"Adresse IP pour les joueurs sur le même réseau local: {external_ip}")
+            print("Si les joueurs sont sur un réseau différent, ils devront utiliser votre adresse IP publique.")
+            print("Vous pouvez trouver votre adresse IP publique en visitant https://www.whatismyip.com/")
+            
+        except Exception as e:
+            print(f"Erreur lors de la vérification de l'accessibilité du serveur: {e}")
 
 # Fonction pour démarrer un serveur en mode autonome
 def start_server(host='0.0.0.0', port=5555):

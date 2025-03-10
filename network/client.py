@@ -45,6 +45,22 @@ class GameClient:
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             # Définir un timeout pour la connexion
             self.client_socket.settimeout(5)
+            
+            # Vérifier si l'adresse IP est valide
+            try:
+                socket.inet_aton(self.host)
+                print(f"Adresse IP valide: {self.host}")
+            except socket.error:
+                print(f"Adresse IP invalide: {self.host}, tentative de résolution DNS...")
+                try:
+                    resolved_ip = socket.gethostbyname(self.host)
+                    print(f"Résolution DNS réussie: {self.host} -> {resolved_ip}")
+                    self.host = resolved_ip
+                except socket.gaierror as e:
+                    print(f"Erreur de résolution DNS pour {self.host}: {e}")
+                    return False
+            
+            print(f"Connexion à {self.host}:{self.port}...")
             self.client_socket.connect((self.host, self.port))
             # Remettre le socket en mode bloquant après la connexion
             self.client_socket.settimeout(None)

@@ -130,6 +130,14 @@ def handle_host_game():
     local_ip = get_local_ip()
     print(f"Adresse IP locale: {local_ip}")
     
+    # Afficher des instructions pour les autres joueurs
+    print("\n=== INSTRUCTIONS POUR LES AUTRES JOUEURS ===")
+    print(f"Les autres joueurs doivent utiliser l'adresse IP suivante pour se connecter:")
+    print(f"- Si sur le même réseau local: {local_ip}")
+    print("- Si sur un réseau différent: Votre adresse IP publique (visitez https://www.whatismyip.com/)")
+    print("Assurez-vous que le port 5555 est ouvert dans votre pare-feu et redirigé dans votre routeur si nécessaire.")
+    print("===========================================\n")
+    
     # Héberger une partie en mode serveur
     try:
         # Vérifier si le serveur est déjà en cours d'exécution

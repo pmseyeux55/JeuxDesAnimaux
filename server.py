@@ -15,7 +15,7 @@ def main():
         print("Démarrage du serveur de jeu...")
         # Analyser les arguments de la ligne de commande
         parser = argparse.ArgumentParser(description="Serveur de jeu des animaux")
-        parser.add_argument("--host", default="127.0.0.1", help="Adresse IP du serveur (par défaut: 127.0.0.1)")
+        parser.add_argument("--host", default="0.0.0.0", help="Adresse IP du serveur (par défaut: 0.0.0.0 pour écouter sur toutes les interfaces)")
         parser.add_argument("--port", type=int, default=5555, help="Port d'écoute du serveur (par défaut: 5555)")
         args = parser.parse_args()
         

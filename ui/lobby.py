@@ -43,6 +43,7 @@ class Lobby:
         self.subtitle_font = pygame.font.SysFont(None, 48)
         self.info_font = pygame.font.SysFont(None, 36)
         self.player_font = pygame.font.SysFont(None, 30)
+        self.small_font = pygame.font.SysFont(None, 24)
         
         # Boutons
         button_width = 300
@@ -78,13 +79,19 @@ class Lobby:
             "visible": True
         }
         
-        # Rectangle pour mettre en évidence l'adresse IP
+        # Créer un rectangle de mise en évidence pour l'adresse IP
         self.ip_highlight_rect = pygame.Rect(
             (self.screen_width - 500) // 2,
             120,
             500,
             60
         )
+        
+        # Ajouter des informations de connexion supplémentaires
+        self.connection_info = "Pour que d'autres joueurs puissent se connecter:"
+        self.connection_info_local = f"- Sur le même réseau: {host_ip}"
+        self.connection_info_external = "- Sur un réseau différent: Votre IP publique"
+        self.connection_info_port = "- Le port 5555 doit être ouvert dans votre pare-feu"
         
         # Dernière mise à jour des joueurs
         self.last_update = time.time()
@@ -188,6 +195,33 @@ class Lobby:
             ip_text = self.subtitle_font.render(f"Adresse IP: {self.host_ip}", True, BLUE)
             ip_rect = ip_text.get_rect(center=self.ip_highlight_rect.center)
             self.screen.blit(ip_text, ip_rect)
+            
+            # Dessiner les informations de connexion supplémentaires (seulement pour l'hôte)
+            if self.is_host:
+                info_y = self.ip_highlight_rect.bottom + 10
+                
+                # Titre des informations de connexion
+                info_text = self.small_font.render(self.connection_info, True, BLACK)
+                info_rect = info_text.get_rect(center=(self.screen_width // 2, info_y))
+                self.screen.blit(info_text, info_rect)
+                
+                # Informations sur le réseau local
+                info_y += 25
+                local_text = self.small_font.render(self.connection_info_local, True, BLACK)
+                local_rect = local_text.get_rect(center=(self.screen_width // 2, info_y))
+                self.screen.blit(local_text, local_rect)
+                
+                # Informations sur le réseau externe
+                info_y += 25
+                external_text = self.small_font.render(self.connection_info_external, True, BLACK)
+                external_rect = external_text.get_rect(center=(self.screen_width // 2, info_y))
+                self.screen.blit(external_text, external_rect)
+                
+                # Informations sur le port
+                info_y += 25
+                port_text = self.small_font.render(self.connection_info_port, True, BLACK)
+                port_rect = port_text.get_rect(center=(self.screen_width // 2, info_y))
+                self.screen.blit(port_text, port_rect)
             
             # Dessiner le sous-titre pour la liste des joueurs
             subtitle = self.subtitle_font.render("Joueurs connectés:", True, BLACK)
