@@ -366,26 +366,8 @@ class Lobby:
             if not self.is_host and self.client.connected:
                 self.client.send_action({"ready": self.ready})
         
-        # Si nous sommes l'hôte et qu'il n'y a pas de client, simuler des joueurs pour les tests
-        elif self.is_host and not self.client:
-            # Ajouter un joueur toutes les 5 secondes pour les tests
-            if len(self.players) < 4 and time.time() % 5 < 0.1:
-                self.players.append({
-                    "id": len(self.players) + 1,
-                    "name": f"Joueur {len(self.players) + 1}",
-                    "ready": False
-                })
-            
-            # Marquer les joueurs comme prêts aléatoirement
-            for player in self.players:
-                if player["id"] != 1 and time.time() % 7 < 0.1:
-                    player["ready"] = not player.get("ready", False)
-            
+        # Si nous sommes l'hôte, afficher un message d'attente
+        elif self.is_host:
             # Mettre à jour le message d'information
-            all_ready = all(player.get("ready", False) for player in self.players if player["id"] != 1)
-            if len(self.players) > 1 and all_ready:
-                self.info_message = "Tous les joueurs sont prêts. Vous pouvez démarrer la partie."
-                self.start_button["active"] = True
-            else:
-                self.info_message = "En attente que tous les joueurs soient prêts..."
-                self.start_button["active"] = len(self.players) > 1 
+            self.info_message = "En attente de joueurs..."
+            self.start_button["active"] = False 
