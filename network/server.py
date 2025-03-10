@@ -24,7 +24,7 @@ class GameServer:
         self.port = port
         self.server_socket = None
         self.clients = []  # Liste des connexions clients
-        self.game_state = {}  # État du jeu à synchroniser
+        self.game_state = {"players": []}  # État du jeu à synchroniser avec une liste de joueurs vide
         self.running = False
         self.lock = threading.Lock()  # Verrou pour l'accès concurrent à game_state
         
@@ -134,11 +134,11 @@ class GameServer:
                             player_found = True
                             break
                     
-                    # Ajouter le joueur s'il n'existe pas
-                    if not player_found:
+                    # Ajouter seulement l'hôte (ID 1) automatiquement
+                    if not player_found and client_info["id"] == 1:
                         self.game_state["players"].append({
                             "id": client_info["id"],
-                            "name": f"Joueur {client_info['id']}",
+                            "name": "Hôte",
                             "ready": False
                         })
                 
@@ -226,6 +226,7 @@ class GameServer:
                 client_socket.settimeout(None)
                 
                 size = int.from_bytes(size_bytes, byteorder='big')
+                print(f"Réception de {size} octets du client {client_address}")
                 
                 # Recevoir les données
                 data = b""
@@ -249,6 +250,15 @@ class GameServer:
                     message = pickle.loads(data)
                     # Traiter le message
                     self.process_message(client_info, message)
+                    
+                    # Envoyer une confirmation de réception au client
+                    # Cela permet de maintenir la connexion active et d'éviter les timeouts
+                    ack_message = {
+                        "type": "ack",
+                        "message_type": message.get("type", "unknown")
+                    }
+                    self.send_to_client(client_socket, ack_message)
+                    
                 except Exception as e:
                     print(f"Erreur lors du traitement du message du client {client_address}: {e}")
                     traceback.print_exc()
@@ -303,20 +313,6 @@ class GameServer:
                         # Initialiser la liste des joueurs si elle n'existe pas
                         if "players" not in self.game_state:
                             self.game_state["players"] = []
-                            
-                            # Ajouter l'hôte (joueur 1) s'il n'est pas déjà dans la liste
-                            host_found = False
-                            for player in self.game_state["players"]:
-                                if player["id"] == 1:
-                                    host_found = True
-                                    break
-                            
-                            if not host_found:
-                                self.game_state["players"].append({
-                                    "id": 1,
-                                    "name": "Hôte",
-                                    "ready": False
-                                })
                         
                         # Mettre à jour le statut du joueur
                         player_found = False
@@ -328,11 +324,19 @@ class GameServer:
                         
                         # Si le joueur n'est pas dans la liste, l'ajouter
                         if not player_found:
-                            self.game_state["players"].append({
-                                "id": client_id,
-                                "name": f"Joueur {client_id}",
-                                "ready": action_data["ready"]
-                            })
+                            # Vérifier que le client est bien connecté
+                            client_connected = False
+                            for client in self.clients:
+                                if client["id"] == client_id:
+                                    client_connected = True
+                                    break
+                            
+                            if client_connected:
+                                self.game_state["players"].append({
+                                    "id": client_id,
+                                    "name": f"Joueur {client_id}",
+                                    "ready": action_data["ready"]
+                                })
                 
                 # Si le message contient un indicateur de configuration terminée
                 if "setup_complete" in action_data:
