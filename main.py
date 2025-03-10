@@ -144,6 +144,14 @@ def main():
                     if lobby_result["action"] == "back":
                         print("Retour au menu principal depuis le lobby")
                         client.disconnect()
+                        # Arrêter le serveur car nous quittons le mode hôte
+                        if server_process:
+                            server_process.terminate()
+                            try:
+                                server_process.wait(timeout=2)
+                            except:
+                                if server_process.poll() is None:
+                                    server_process.kill()
                         return
                     
                     if lobby_result["action"] == "start_game":

@@ -103,7 +103,6 @@ class Lobby:
             dict: Informations sur l'action choisie par l'utilisateur
         """
         clock = pygame.time.Clock()
-        selected_button = None
         
         while self.running:
             # Gérer les événements
@@ -117,8 +116,14 @@ class Lobby:
                     if event.button == 1:  # Clic gauche
                         mouse_pos = pygame.mouse.get_pos()
                         
+                        # Vérifier si le bouton de retour a été cliqué
+                        if self.back_button["rect"].collidepoint(mouse_pos):
+                            print("Bouton retour cliqué")
+                            self.running = False
+                            return {"action": "back"}
+                        
                         # Vérifier si le bouton de démarrage a été cliqué (seulement pour l'hôte)
-                        if self.is_host and self.start_button["visible"] and self.start_button["active"] and self.start_button["rect"].collidepoint(mouse_pos):
+                        elif self.is_host and self.start_button["visible"] and self.start_button["active"] and self.start_button["rect"].collidepoint(mouse_pos):
                             # L'hôte démarre la partie
                             self.running = False
                             
@@ -139,11 +144,6 @@ class Lobby:
                             # Informer le serveur que nous sommes prêts
                             if self.client:
                                 self.client.send_action({"ready": self.ready})
-                        
-                        # Vérifier si le bouton de retour a été cliqué
-                        elif self.back_button["rect"].collidepoint(mouse_pos):
-                            self.running = False
-                            return {"action": "back"}
             
             # Mettre à jour la liste des joueurs
             current_time = time.time()
