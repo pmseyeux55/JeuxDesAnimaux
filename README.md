@@ -19,7 +19,7 @@ A strategic turn-based game where animals battle using their unique attributes a
 
 1. Clone this repository:
 ```bash
-git clone https://github.com/YOUR_USERNAME/JeuxDesAnimaux.git
+git clone https://github.com/pmseyeux55/JeuxDesAnimaux.git
 cd JeuxDesAnimaux
 ```
 
