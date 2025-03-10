@@ -238,24 +238,29 @@ def handle_host_game():
                 print("Interface réseau créée")
                 
                 print("Configuration de l'animal...")
-                # Utiliser l'écran de configuration pour créer le jeu
-                # et passer le callback pour signaler que la configuration est terminée
-                game = GUI.setup_game(setup_complete_callback=gui.setup_complete_callback)
-                
-                # Si l'utilisateur a fermé la fenêtre de configuration sans terminer
-                if game is None:
-                    print("Configuration annulée")
+                try:
+                    # Utiliser l'écran de configuration pour créer le jeu
+                    # et passer le callback pour signaler que la configuration est terminée
+                    game = GUI.setup_game(setup_complete_callback=gui.setup_complete_callback)
+                    
+                    # Si l'utilisateur a fermé la fenêtre de configuration sans terminer
+                    if game is None:
+                        print("Configuration annulée")
+                        client.disconnect()
+                        return {"action": "main_menu"}
+                    
+                    print("Lancement de l'interface graphique...")
+                    # Lancer l'interface graphique en mode réseau
+                    gui.run()
+                except Exception as e:
+                    print(f"Erreur pendant la phase de jeu: {e}")
+                    traceback.print_exc()
+                finally:
+                    # Déconnecter le client seulement à la fin du jeu
+                    print("Déconnexion du client à la fin du jeu...")
                     client.disconnect()
-                    return {"action": "main_menu"}
                 
-                print("Lancement de l'interface graphique...")
-                # Lancer l'interface graphique en mode réseau
-                gui.run()
-            
-            # Déconnecter le client
-            print("Déconnexion du client...")
-            client.disconnect()
-            return {"action": "main_menu"}
+                return {"action": "main_menu"}
         else:
             print("Impossible de se connecter au serveur local après plusieurs tentatives")
             return {"action": "main_menu"}
@@ -360,24 +365,29 @@ def handle_join_game(host):
                 print("Interface réseau créée")
                 
                 print("Configuration de l'animal...")
-                # Utiliser l'écran de configuration pour créer le jeu
-                # et passer le callback pour signaler que la configuration est terminée
-                game = GUI.setup_game(setup_complete_callback=gui.setup_complete_callback)
-                
-                # Si l'utilisateur a fermé la fenêtre de configuration sans terminer
-                if game is None:
-                    print("Configuration annulée")
+                try:
+                    # Utiliser l'écran de configuration pour créer le jeu
+                    # et passer le callback pour signaler que la configuration est terminée
+                    game = GUI.setup_game(setup_complete_callback=gui.setup_complete_callback)
+                    
+                    # Si l'utilisateur a fermé la fenêtre de configuration sans terminer
+                    if game is None:
+                        print("Configuration annulée")
+                        client.disconnect()
+                        return {"action": "main_menu"}
+                    
+                    print("Lancement de l'interface graphique...")
+                    # Lancer l'interface graphique en mode réseau
+                    gui.run()
+                except Exception as e:
+                    print(f"Erreur pendant la phase de jeu: {e}")
+                    traceback.print_exc()
+                finally:
+                    # Déconnecter le client seulement à la fin du jeu
+                    print("Déconnexion du client à la fin du jeu...")
                     client.disconnect()
-                    return {"action": "main_menu"}
                 
-                print("Lancement de l'interface graphique...")
-                # Lancer l'interface graphique en mode réseau
-                gui.run()
-            
-            # Déconnecter le client
-            print("Déconnexion du client...")
-            client.disconnect()
-            return {"action": "main_menu"}
+                return {"action": "main_menu"}
         else:
             print(f"Impossible de se connecter au serveur {host} après plusieurs tentatives")
             # Afficher un message d'erreur à l'utilisateur

@@ -108,17 +108,79 @@ class GameClient:
             except Exception as e:
                 print(f"Erreur lors de l'appel du callback de déconnexion: {e}")
     
+    def reconnect(self):
+        """Tente de se reconnecter au serveur
+        
+        Returns:
+            bool: True si la reconnexion a réussi, False sinon
+        """
+        if self.connected:
+            print("Déjà connecté au serveur")
+            return True
+            
+        print(f"Tentative de reconnexion à {self.host}:{self.port}...")
+        
+        # Fermer le socket existant s'il existe
+        if self.client_socket:
+            try:
+                self.client_socket.close()
+            except:
+                pass
+        
+        # Créer un nouveau socket
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket.settimeout(5)
+        
+        try:
+            print(f"Connexion à {self.host}:{self.port}...")
+            self.client_socket.connect((self.host, self.port))
+            self.client_socket.settimeout(None)
+            self.connected = True
+            
+            # Démarrer un nouveau thread de réception si nécessaire
+            if not self.receive_thread or not self.receive_thread.is_alive():
+                print("Démarrage d'un nouveau thread de réception...")
+                self.receive_thread = threading.Thread(target=self.receive_messages)
+                self.receive_thread.daemon = True
+                self.receive_thread.start()
+            
+            print(f"Reconnecté au serveur {self.host}:{self.port}")
+            return True
+        except Exception as e:
+            print(f"Échec de la reconnexion: {e}")
+            return False
+    
     def receive_messages(self):
         """Reçoit les messages du serveur"""
         print("Début de la réception des messages...")
+        consecutive_errors = 0
+        max_consecutive_errors = 3
+        
         while self.connected:
             try:
                 # Recevoir la taille des données
                 print("En attente de données du serveur...")
                 size_bytes = self.client_socket.recv(4)
                 if not size_bytes:
-                    print("Aucune donnée reçue du serveur, déconnexion")
-                    break
+                    print("Aucune donnée reçue du serveur, tentative de reconnexion...")
+                    consecutive_errors += 1
+                    if consecutive_errors >= max_consecutive_errors:
+                        print(f"Trop d'erreurs consécutives ({consecutive_errors}), déconnexion")
+                        self.connected = False
+                        break
+                    
+                    # Tenter de se reconnecter
+                    if self.reconnect():
+                        print("Reconnexion réussie, reprise de la réception...")
+                        consecutive_errors = 0
+                        continue
+                    
+                    # Attendre un peu avant de réessayer
+                    time.sleep(1)
+                    continue
+                
+                # Réinitialiser le compteur d'erreurs si on reçoit des données
+                consecutive_errors = 0
                 
                 size = int.from_bytes(size_bytes, byteorder='big')
                 print(f"Taille des données à recevoir: {size} octets")
@@ -128,13 +190,22 @@ class GameClient:
                 while len(data) < size:
                     chunk = self.client_socket.recv(min(size - len(data), 4096))
                     if not chunk:
-                        print("Réception de données interrompue, déconnexion")
+                        print("Réception de données interrompue, tentative de reconnexion...")
+                        consecutive_errors += 1
+                        if consecutive_errors >= max_consecutive_errors:
+                            print(f"Trop d'erreurs consécutives ({consecutive_errors}), déconnexion")
+                            break
+                        # Attendre un peu avant de réessayer
+                        time.sleep(1)
                         break
                     data += chunk
                 
-                if not data:
-                    print("Aucune donnée reçue, déconnexion")
-                    break
+                # Si on a quitté la boucle de réception à cause d'une erreur, continuer la boucle principale
+                if len(data) < size:
+                    continue
+                
+                # Réinitialiser le compteur d'erreurs si on reçoit des données complètes
+                consecutive_errors = 0
                 
                 # Désérialiser les données
                 print("Désérialisation des données reçues...")
@@ -268,8 +339,11 @@ class GameClient:
             bool: True si l'envoi a réussi, False sinon
         """
         if not self.connected:
-            print("Non connecté au serveur")
-            return False
+            print("Non connecté au serveur, tentative de reconnexion...")
+            if not self.reconnect():
+                print("Échec de la reconnexion, impossible d'envoyer le message")
+                return False
+            print("Reconnexion réussie, envoi du message...")
         
         try:
             # Sérialiser le message
@@ -285,6 +359,24 @@ class GameClient:
         except Exception as e:
             print(f"Erreur lors de l'envoi d'un message: {e}")
             traceback.print_exc()
+            
+            # Marquer comme déconnecté
+            self.connected = False
+            
+            # Tenter de se reconnecter
+            print("Tentative de reconnexion après erreur d'envoi...")
+            if self.reconnect():
+                try:
+                    # Réessayer l'envoi après reconnexion
+                    print("Réessai de l'envoi après reconnexion...")
+                    self.client_socket.sendall(len(data).to_bytes(4, byteorder='big'))
+                    self.client_socket.sendall(data)
+                    print("Message envoyé avec succès après reconnexion")
+                    return True
+                except Exception as e2:
+                    print(f"Échec de l'envoi après reconnexion: {e2}")
+                    self.connected = False
+            
             return False
     
     def register_callback(self, event_type, callback):
