@@ -144,7 +144,19 @@ class Lobby:
                             
                             # Informer les clients que la partie commence
                             if self.client:
-                                self.client.send_action({"game_started": True})
+                                if not self.client.connected:
+                                    print("Client non connecté, tentative de reconnexion...")
+                                    if not self.client.reconnect():
+                                        print("Échec de la reconnexion, impossible d'envoyer le signal de démarrage")
+                                        self.info_message = "Erreur de connexion. Tentative de reconnexion..."
+                                        continue
+                                    print("Reconnexion réussie, envoi du signal de démarrage...")
+                                
+                                # Envoyer le signal de démarrage au serveur
+                                if not self.client.send_action({"game_started": True}):
+                                    print("Échec de l'envoi du signal de démarrage")
+                                    self.info_message = "Erreur de connexion. Tentative de reconnexion..."
+                                    continue
                             
                             result = {"action": "start_game"}
                             break
@@ -160,7 +172,19 @@ class Lobby:
                             
                             # Informer le serveur que nous sommes prêts
                             if self.client:
-                                self.client.send_action({"ready": self.ready})
+                                if not self.client.connected:
+                                    print("Client non connecté, tentative de reconnexion...")
+                                    if not self.client.reconnect():
+                                        print("Échec de la reconnexion, impossible d'envoyer le statut")
+                                        self.info_message = "Erreur de connexion. Tentative de reconnexion..."
+                                        continue
+                                    print("Reconnexion réussie, envoi du statut...")
+                                
+                                # Envoyer le statut au serveur
+                                if not self.client.send_action({"ready": self.ready}):
+                                    print("Échec de l'envoi du statut")
+                                    self.info_message = "Erreur de connexion. Tentative de reconnexion..."
+                                    continue
             
             # Si la boucle a été interrompue, sortir
             if not self.running:
@@ -306,7 +330,14 @@ class Lobby:
     def update_players(self):
         """Met à jour la liste des joueurs connectés"""
         # Si nous avons un client, demander la liste des joueurs au serveur
-        if self.client and self.client.connected:
+        if self.client:
+            if not self.client.connected:
+                print("Client non connecté, tentative de reconnexion...")
+                if not self.client.reconnect():
+                    print("Échec de la reconnexion, impossible de mettre à jour les joueurs")
+                    return
+                print("Reconnexion réussie, mise à jour des joueurs...")
+            
             # Vérifier si nous avons reçu des mises à jour de l'état du jeu
             game_state = self.client.game_state
             if game_state:
@@ -332,7 +363,7 @@ class Lobby:
                             self.start_button["active"] = len(self.players) > 1
             
             # Envoyer notre statut au serveur
-            if not self.is_host:
+            if not self.is_host and self.client.connected:
                 self.client.send_action({"ready": self.ready})
         
         # Si nous sommes l'hôte et qu'il n'y a pas de client, simuler des joueurs pour les tests

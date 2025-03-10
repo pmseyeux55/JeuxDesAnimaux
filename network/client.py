@@ -265,59 +265,68 @@ class GameClient:
             message: Message reçu
         """
         message_type = message.get("type")
+        
         print(f"Traitement du message de type '{message_type}'")
         
         if message_type == "connection":
-            # Connexion établie, récupérer l'ID du client
-            self.client_id = message.get("id")
-            print(f"ID client: {self.client_id}")
+            # Message de connexion, contient l'ID du client
+            client_id = message.get("id")
+            print(f"ID client: {client_id}")
             
             # Appeler les callbacks de connexion
             print("Appel des callbacks de connexion...")
             for callback in self.callbacks["connection"]:
                 try:
-                    callback(self.client_id)
+                    callback(client_id)
                 except Exception as e:
                     print(f"Erreur lors de l'appel du callback de connexion: {e}")
         
         elif message_type == "game_start":
             # La partie commence
-            print("La partie commence")
+            print("Signal de démarrage de partie reçu")
             
-            # Appeler les callbacks de début de partie
-            print("Appel des callbacks de début de partie...")
+            # Appeler les callbacks de démarrage de partie
             for callback in self.callbacks["game_start"]:
                 try:
                     callback()
                 except Exception as e:
-                    print(f"Erreur lors de l'appel du callback de début de partie: {e}")
+                    print(f"Erreur lors de l'appel du callback de démarrage de partie: {e}")
         
         elif message_type == "game_update":
             # Mise à jour de l'état du jeu
-            print("Mise à jour de l'état du jeu reçue")
-            self.game_state = message.get("state", {})
+            game_state = message.get("state", {})
             
-            # Appeler les callbacks de mise à jour du jeu
-            print("Appel des callbacks de mise à jour du jeu...")
+            # Stocker l'état du jeu
+            self.game_state = game_state
+            
+            # Appeler les callbacks de mise à jour de l'état du jeu
             for callback in self.callbacks["game_update"]:
                 try:
-                    callback(self.game_state)
+                    callback(game_state)
                 except Exception as e:
-                    print(f"Erreur lors de l'appel du callback de mise à jour du jeu: {e}")
+                    print(f"Erreur lors de l'appel du callback de mise à jour de l'état du jeu: {e}")
         
         elif message_type == "chat":
-            # Message de chat reçu
+            # Message de chat
             sender_id = message.get("sender_id")
             chat_message = message.get("message", "")
-            print(f"Message de chat reçu du joueur {sender_id}: {chat_message}")
             
             # Appeler les callbacks de chat
-            print("Appel des callbacks de chat...")
             for callback in self.callbacks["chat"]:
                 try:
                     callback(sender_id, chat_message)
                 except Exception as e:
                     print(f"Erreur lors de l'appel du callback de chat: {e}")
+                    
+        elif message_type == "ack":
+            # Accusé de réception du serveur
+            ack_message_type = message.get("message_type", "unknown")
+            print(f"Accusé de réception pour le message de type '{ack_message_type}'")
+            # Pas besoin de faire autre chose, c'est juste pour maintenir la connexion active
+        
+        else:
+            # Type de message inconnu
+            print(f"Type de message inconnu: {message_type}")
     
     def send_action(self, action_data):
         """Envoie une action au serveur
@@ -368,47 +377,53 @@ class GameClient:
             message: Message à envoyer
             
         Returns:
-            bool: True si l'envoi a réussi, False sinon
+            bool: True si le message a été envoyé avec succès, False sinon
         """
         if not self.connected:
             print("Non connecté au serveur, tentative de reconnexion...")
             if not self.reconnect():
                 print("Échec de la reconnexion, impossible d'envoyer le message")
                 return False
-            print("Reconnexion réussie, envoi du message...")
         
         try:
             # Sérialiser le message
             print(f"Sérialisation du message de type '{message.get('type')}'...")
             data = pickle.dumps(message)
             
-            # Envoyer la taille des données suivie des données
-            print(f"Envoi de {len(data)} octets au serveur...")
-            self.client_socket.sendall(len(data).to_bytes(4, byteorder='big'))
-            self.client_socket.sendall(data)
-            print("Message envoyé avec succès")
-            return True
-        except Exception as e:
-            print(f"Erreur lors de l'envoi d'un message: {e}")
-            traceback.print_exc()
+            # Envoyer la taille des données
+            size = len(data)
+            print(f"Envoi de {size} octets au serveur...")
             
-            # Marquer comme déconnecté
-            self.connected = False
-            
-            # Tenter de se reconnecter
-            print("Tentative de reconnexion après erreur d'envoi...")
-            if self.reconnect():
-                try:
-                    # Réessayer l'envoi après reconnexion
-                    print("Réessai de l'envoi après reconnexion...")
-                    self.client_socket.sendall(len(data).to_bytes(4, byteorder='big'))
-                    self.client_socket.sendall(data)
-                    print("Message envoyé avec succès après reconnexion")
-                    return True
-                except Exception as e2:
-                    print(f"Échec de l'envoi après reconnexion: {e2}")
+            try:
+                self.client_socket.sendall(size.to_bytes(4, byteorder='big'))
+                self.client_socket.sendall(data)
+                print("Message envoyé avec succès")
+                return True
+            except (ConnectionResetError, BrokenPipeError) as e:
+                print(f"Erreur lors de l'envoi du message: {e}")
+                print("Tentative de reconnexion...")
+                
+                # Tenter de se reconnecter
+                if self.reconnect():
+                    print("Reconnexion réussie, nouvelle tentative d'envoi...")
+                    # Réessayer d'envoyer le message
+                    try:
+                        self.client_socket.sendall(size.to_bytes(4, byteorder='big'))
+                        self.client_socket.sendall(data)
+                        print("Message envoyé avec succès après reconnexion")
+                        return True
+                    except Exception as e2:
+                        print(f"Échec de l'envoi après reconnexion: {e2}")
+                        self.connected = False
+                        return False
+                else:
+                    print("Échec de la reconnexion")
                     self.connected = False
-            
+                    return False
+                    
+        except Exception as e:
+            print(f"Erreur lors de l'envoi du message: {e}")
+            traceback.print_exc()
             return False
     
     def register_callback(self, event_type, callback):
