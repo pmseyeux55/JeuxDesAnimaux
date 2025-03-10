@@ -115,9 +115,26 @@ class GameClient:
             bool: True si la reconnexion a réussi, False sinon
         """
         if self.connected:
-            print("Déjà connecté au serveur")
-            return True
-            
+            # Vérifier si la connexion est réellement active
+            try:
+                # Envoyer un message de ping pour vérifier la connexion
+                print("Vérification de la connexion existante...")
+                self.client_socket.settimeout(2)
+                # Envoyer un message vide pour tester la connexion
+                self.client_socket.sendall(len(b'ping').to_bytes(4, byteorder='big'))
+                self.client_socket.sendall(b'ping')
+                self.client_socket.settimeout(None)
+                print("Connexion existante fonctionnelle")
+                return True
+            except Exception as e:
+                print(f"La connexion existante ne fonctionne pas: {e}")
+                self.connected = False
+                # Fermer le socket existant
+                try:
+                    self.client_socket.close()
+                except:
+                    pass
+        
         print(f"Tentative de reconnexion à {self.host}:{self.port}...")
         
         # Fermer le socket existant s'il existe
@@ -160,7 +177,12 @@ class GameClient:
             try:
                 # Recevoir la taille des données
                 print("En attente de données du serveur...")
+                # Définir un timeout pour éviter de bloquer indéfiniment
+                self.client_socket.settimeout(10)  # 10 secondes de timeout
                 size_bytes = self.client_socket.recv(4)
+                # Remettre en mode bloquant
+                self.client_socket.settimeout(None)
+                
                 if not size_bytes:
                     print("Aucune donnée reçue du serveur, tentative de reconnexion...")
                     consecutive_errors += 1
@@ -174,10 +196,11 @@ class GameClient:
                         print("Reconnexion réussie, reprise de la réception...")
                         consecutive_errors = 0
                         continue
-                    
-                    # Attendre un peu avant de réessayer
-                    time.sleep(1)
-                    continue
+                    else:
+                        # Si la reconnexion échoue, attendre avant de réessayer
+                        print("Échec de la reconnexion, attente avant nouvelle tentative...")
+                        time.sleep(2)
+                        continue
                 
                 # Réinitialiser le compteur d'erreurs si on reçoit des données
                 consecutive_errors = 0
@@ -187,6 +210,7 @@ class GameClient:
                 
                 # Recevoir les données
                 data = b""
+                self.client_socket.settimeout(5)  # 5 secondes de timeout pour chaque morceau
                 while len(data) < size:
                     chunk = self.client_socket.recv(min(size - len(data), 4096))
                     if not chunk:
@@ -194,11 +218,19 @@ class GameClient:
                         consecutive_errors += 1
                         if consecutive_errors >= max_consecutive_errors:
                             print(f"Trop d'erreurs consécutives ({consecutive_errors}), déconnexion")
+                            self.connected = False
+                            break
+                        # Tenter de se reconnecter
+                        if self.reconnect():
+                            print("Reconnexion réussie, mais données perdues. Attente de nouvelles données...")
                             break
                         # Attendre un peu avant de réessayer
-                        time.sleep(1)
+                        time.sleep(2)
                         break
                     data += chunk
+                
+                # Remettre en mode bloquant
+                self.client_socket.settimeout(None)
                 
                 # Si on a quitté la boucle de réception à cause d'une erreur, continuer la boucle principale
                 if len(data) < size:

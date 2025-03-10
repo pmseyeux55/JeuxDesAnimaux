@@ -178,52 +178,91 @@ class GameServer:
         print("Fin de l'acceptation des connexions")
     
     def handle_client(self, client_info):
-        """Gère les messages d'un client
+        """Gère un client connecté
         
         Args:
-            client_info: Dictionnaire contenant les informations du client
+            client_info: Informations sur le client
         """
         client_socket = client_info["socket"]
         client_address = client_info["address"]
         client_id = client_info["id"]
         
-        print(f"Début de la gestion du client {client_address} (ID: {client_id})")
+        print(f"Démarrage du gestionnaire pour le client {client_address} (ID: {client_id})")
         
+        # Envoyer un message de bienvenue au client
+        welcome_message = {
+            "type": "connection",
+            "id": client_id
+        }
+        self.send_to_client(client_socket, welcome_message)
+        
+        # Envoyer l'état actuel du jeu
+        self.send_to_client(client_socket, {
+            "type": "game_update",
+            "state": self.game_state
+        })
+        
+        # Boucle de réception des messages
         while self.running:
             try:
-                # Recevoir les données du client
-                print(f"En attente de données du client {client_address}...")
-                data = client_socket.recv(4096)
-                if not data:
-                    print(f"Aucune donnée reçue du client {client_address}, déconnexion")
+                # Recevoir la taille des données
+                client_socket.settimeout(1)  # Timeout court pour pouvoir vérifier self.running régulièrement
+                try:
+                    size_bytes = client_socket.recv(4)
+                    if not size_bytes:
+                        print(f"Client {client_address} déconnecté (aucune donnée)")
+                        break
+                except socket.timeout:
+                    # Timeout normal, continuer la boucle
+                    continue
+                except ConnectionResetError:
+                    print(f"Connexion réinitialisée par le client {client_address}")
+                    break
+                except Exception as e:
+                    print(f"Erreur lors de la réception de la taille des données du client {client_address}: {e}")
+                    break
+                
+                # Remettre en mode bloquant pour la réception des données
+                client_socket.settimeout(None)
+                
+                size = int.from_bytes(size_bytes, byteorder='big')
+                
+                # Recevoir les données
+                data = b""
+                while len(data) < size:
+                    try:
+                        chunk = client_socket.recv(min(size - len(data), 4096))
+                        if not chunk:
+                            print(f"Client {client_address} déconnecté pendant la réception des données")
+                            break
+                        data += chunk
+                    except Exception as e:
+                        print(f"Erreur lors de la réception des données du client {client_address}: {e}")
+                        break
+                
+                if len(data) < size:
+                    # Données incomplètes, considérer le client comme déconnecté
                     break
                 
                 # Désérialiser les données
-                print(f"Données reçues du client {client_address}, désérialisation...")
-                message = pickle.loads(data)
-                print(f"Message reçu du client {client_address}: {message.get('type', 'inconnu')}")
-                
-                # Traiter le message
-                self.process_message(client_info, message)
-                
+                try:
+                    message = pickle.loads(data)
+                    # Traiter le message
+                    self.process_message(client_info, message)
+                except Exception as e:
+                    print(f"Erreur lors du traitement du message du client {client_address}: {e}")
+                    traceback.print_exc()
+            
             except Exception as e:
-                print(f"Erreur lors de la gestion du client {client_address}: {e}")
+                print(f"Erreur générale lors de la gestion du client {client_address}: {e}")
                 traceback.print_exc()
                 break
         
-        # Fermer la connexion
-        try:
-            print(f"Fermeture de la connexion avec le client {client_address}...")
-            client_socket.close()
-            print(f"Connexion avec le client {client_address} fermée")
-        except Exception as e:
-            print(f"Erreur lors de la fermeture de la connexion avec le client {client_address}: {e}")
-        
-        # Retirer le client de la liste
-        if client_info in self.clients:
-            print(f"Suppression du client {client_address} de la liste...")
-            self.clients.remove(client_info)
-            print(f"Client {client_address} supprimé de la liste")
+        # Supprimer le client de la liste
+        with self.lock:
+            if client_info in self.clients:
+                self.clients.remove(client_info)
+                print(f"Client {client_address} supprimé de la liste")
             
         print(f"Client {client_address} déconnecté")
     
@@ -327,22 +366,36 @@ class GameServer:
             print("Message de chat diffusé à tous les clients")
     
     def broadcast(self, message):
-        """Envoie un message à tous les clients
+        """Diffuse un message à tous les clients
         
         Args:
-            message: Message à envoyer
+            message: Message à diffuser
         """
-        print(f"Diffusion d'un message de type '{message.get('type')}' à {len(self.clients)} clients...")
-        for client in self.clients:
-            self.send_to_client(client["socket"], message)
+        print(f"Diffusion d'un message de type '{message.get('type')}' à tous les clients...")
+        
+        # Copier la liste des clients pour éviter les problèmes de modification pendant l'itération
+        with self.lock:
+            clients_copy = self.clients.copy()
+        
+        # Envoyer le message à chaque client
+        for client_info in clients_copy:
+            try:
+                self.send_to_client(client_info["socket"], message)
+            except Exception as e:
+                print(f"Erreur lors de la diffusion au client {client_info['address']}: {e}")
+                # Ne pas supprimer le client ici, cela sera fait dans le thread de gestion du client
+        
         print("Message diffusé à tous les clients")
     
     def send_to_client(self, client_socket, message):
-        """Envoie un message à un client spécifique
+        """Envoie un message à un client
         
         Args:
             client_socket: Socket du client
             message: Message à envoyer
+            
+        Raises:
+            Exception: Si l'envoi échoue
         """
         try:
             # Sérialiser le message
@@ -351,9 +404,10 @@ class GameServer:
             # Envoyer la taille des données suivie des données
             client_socket.sendall(len(data).to_bytes(4, byteorder='big'))
             client_socket.sendall(data)
+            return True
         except Exception as e:
             print(f"Erreur lors de l'envoi d'un message: {e}")
-            traceback.print_exc()
+            raise
     
     def update_game_state(self, new_state):
         """Met à jour l'état du jeu

@@ -160,7 +160,7 @@ def handle_host_game():
         print(f"Serveur démarré avec PID: {server_process.pid}")
         
         # Attendre que le serveur démarre
-        time.sleep(1)
+        time.sleep(2)  # Attendre un peu plus longtemps pour s'assurer que le serveur est prêt
         
         # Vérifier si le serveur est toujours en cours d'exécution
         if server_process.poll() is not None:
@@ -176,17 +176,23 @@ def handle_host_game():
         from client import NetworkedGUI
         
         print("Connexion au serveur local...")
-        # Se connecter au serveur local
-        client = GameClient("127.0.0.1")  # Toujours utiliser 127.0.0.1 pour se connecter au serveur local
+        # Se connecter au serveur
+        client = GameClient("127.0.0.1")
         
         # Essayer de se connecter plusieurs fois
         connected = False
-        for attempt in range(3):
-            if client.connect():
-                connected = True
-                break
-            print(f"Tentative de connexion {attempt+1} échouée, nouvelle tentative...")
-            time.sleep(1)
+        for attempt in range(5):  # Augmenter le nombre de tentatives
+            try:
+                print(f"Tentative de connexion {attempt+1}...")
+                if client.connect():
+                    connected = True
+                    print(f"Connexion réussie à 127.0.0.1")
+                    break
+                print(f"Tentative de connexion {attempt+1} échouée, nouvelle tentative dans 2 secondes...")
+                time.sleep(2)  # Attendre un peu plus entre les tentatives
+            except Exception as e:
+                print(f"Erreur lors de la tentative {attempt+1}: {e}")
+                time.sleep(2)
         
         if connected:
             print("Connecté au serveur, création de l'interface...")
