@@ -226,6 +226,10 @@ class GameServer:
                 if "game_started" in action_data and client_id == 1:  # Seul l'hôte (ID 1) peut démarrer la partie
                     print(f"L'hôte a démarré la partie")
                     self.game_state["game_started"] = True
+                    
+                    # Informer tous les clients que la partie commence
+                    print("Diffusion du signal de démarrage de partie à tous les clients...")
+                    self.broadcast({"type": "game_start"})
                 
                 # Gérer le statut "prêt" du joueur
                 if "ready" in action_data:
@@ -282,7 +286,7 @@ class GameServer:
             print("Diffusion de la mise à jour à tous les clients...")
             self.broadcast({
                 "type": "game_update",
-                "data": self.game_state
+                "state": self.game_state
             })
             print("Mise à jour diffusée à tous les clients")
         
@@ -340,7 +344,7 @@ class GameServer:
         print("Diffusion de la mise à jour à tous les clients...")
         self.broadcast({
             "type": "game_update",
-            "data": self.game_state
+            "state": self.game_state
         })
         print("Mise à jour diffusée à tous les clients")
 
