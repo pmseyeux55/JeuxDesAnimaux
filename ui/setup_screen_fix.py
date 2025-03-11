@@ -3,7 +3,7 @@ Module pour corriger les problèmes avec la classe SetupScreen.
 """
 import pygame
 from game.config import (
-    WHITE, BLACK, GRAY, BLUE, RED, GREEN, LIGHT_GRAY,
+    WHITE, BLACK, GRAY, BLUE, RED, GREEN, LIGHT_GRAY, YELLOW, ORANGE, BROWN, DARK_BLUE,
     MAX_POINTS, HP_MIN, STAMINA_MIN, SPEED_MIN, TEETH_MIN, CLAWS_MIN, SKIN_MIN, HEIGHT_MIN,
     HP_CONVERSION, STAMINA_CONVERSION, SPEED_CONVERSION, TEETH_CONVERSION, CLAWS_CONVERSION, SKIN_CONVERSION, HEIGHT_CONVERSION
 )
@@ -33,15 +33,54 @@ class FixedSetupScreen(SetupScreen):
         # Initialiser arrow_buttons (qui est utilisé mais jamais initialisé dans SetupScreen)
         self.arrow_buttons = []
         
-        # Créer les boutons fléchés pour chaque statistique
-        stats = ["hp", "stamina", "speed", "teeth", "claws", "skin", "height"]
-        for stat in stats:
-            # Bouton pour diminuer la statistique
-            self.arrow_buttons.append({"stat": stat, "change": -1, "rect": self.minus_buttons[stat].rect})
-            # Bouton pour augmenter la statistique
-            self.arrow_buttons.append({"stat": stat, "change": 1, "rect": self.plus_buttons[stat].rect})
+        try:
+            # Créer les boutons fléchés pour chaque statistique
+            stats = ["hp", "stamina", "speed", "teeth", "claws", "skin", "height"]
+            for stat in stats:
+                # Vérifier que les boutons existent
+                if hasattr(self, 'minus_buttons') and hasattr(self, 'plus_buttons'):
+                    if stat in self.minus_buttons and stat in self.plus_buttons:
+                        # Bouton pour diminuer la statistique
+                        self.arrow_buttons.append({"stat": stat, "change": -1, "rect": self.minus_buttons[stat].rect})
+                        # Bouton pour augmenter la statistique
+                        self.arrow_buttons.append({"stat": stat, "change": 1, "rect": self.plus_buttons[stat].rect})
+            
+            print("FixedSetupScreen: arrow_buttons initialisé dans __init__")
+        except Exception as e:
+            print(f"Erreur lors de l'initialisation des arrow_buttons: {e}")
+            # Créer des arrow_buttons vides en cas d'erreur
+            self.arrow_buttons = []
+    
+    def get_player_data(self):
+        """Récupère les données de configuration du joueur.
         
-        print("FixedSetupScreen: arrow_buttons initialisé dans __init__")
+        Returns:
+            dict: Données de configuration du joueur
+        """
+        # Récupérer les paramètres de l'animal actuel
+        if self.current_phase == 1:
+            params = self.player1_animal_params
+            name = self.player1_animal_name
+            position = LION_START_POSITION
+        else:  # Phase 2
+            params = self.player2_animal_params
+            name = self.player2_animal_name
+            position = TIGER_START_POSITION
+        
+        # Créer un dictionnaire avec les données de configuration
+        player_data = {
+            "name": name,
+            "hp": params["hp"],
+            "stamina": params["stamina"],
+            "speed": params["speed"],
+            "teeth": params["teeth"],
+            "claws": params["claws"],
+            "skin": params["skin"],
+            "height": params["height"],
+            "position": position
+        }
+        
+        return player_data
     
     def run_single_player(self):
         """Exécute l'écran de configuration pour un seul joueur avec une gestion robuste de button_font.
@@ -139,6 +178,8 @@ def fixed_setup_game(screen_width=900, screen_height=600, setup_complete_callbac
     Returns:
         Game: Instance du jeu configuré, ou None si l'utilisateur a annulé
     """
+    print("DEBUG: fixed_setup_game from ui/setup_screen_fix.py is being called!")
+    
     # Initialiser pygame si ce n'est pas déjà fait
     if not pygame.get_init():
         pygame.init()
