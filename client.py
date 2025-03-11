@@ -290,10 +290,39 @@ class NetworkedGUI(GUI):
             self.setup_complete = True
             print("Configuration terminée, envoi de l'état au serveur...")
             
+            # Vérifier que le client est toujours connecté
+            if not self.client.connected:
+                print("Client déconnecté, tentative de reconnexion...")
+                reconnection_attempts = 0
+                max_reconnection_attempts = 5
+                
+                while reconnection_attempts < max_reconnection_attempts:
+                    reconnection_attempts += 1
+                    print(f"Tentative de reconnexion {reconnection_attempts}/{max_reconnection_attempts}...")
+                    
+                    if self.client.reconnect():
+                        print("Reconnexion réussie!")
+                        break
+                    
+                    # Attendre avant la prochaine tentative
+                    time.sleep(2)
+                
+                if not self.client.connected:
+                    print("Impossible de se reconnecter au serveur après plusieurs tentatives")
+                    self.show_info_message("Impossible de se connecter au serveur. Appuyez sur Échap pour quitter.", duration=float('inf'))
+                    self.connection_error = True
+                    return
+            
             # Envoyer l'état du jeu au serveur avec un indicateur de configuration terminée
             game_state = GameStateEncoder.encode_game_state(self.game)
             game_state["setup_complete"] = True
-            self.client.send_action(game_state)
+            success = self.client.send_action(game_state)
+            
+            if not success:
+                print("Échec de l'envoi de l'état du jeu")
+                self.show_info_message("Impossible d'envoyer l'état du jeu au serveur. Appuyez sur Échap pour quitter.", duration=float('inf'))
+                self.connection_error = True
+                return
             
             # Si l'adversaire a également terminé sa configuration, commencer la partie
             if self.opponent_setup_complete:

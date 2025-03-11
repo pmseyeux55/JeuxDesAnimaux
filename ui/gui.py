@@ -676,6 +676,15 @@ class SetupScreen:
             self.screen.fill(WHITE)
             self.draw_table()
             
+            # Dessiner le bouton de démarrage avec gestion d'erreur
+            try:
+                self.start_button.draw(self.screen, self.button_font)
+            except AttributeError:
+                # Si button_font n'est pas défini, le créer
+                print("Erreur: button_font non défini, création d'une nouvelle instance")
+                self.button_font = pygame.font.SysFont(None, 30)
+                self.start_button.draw(self.screen, self.button_font)
+            
             # Mettre à jour l'affichage
             pygame.display.flip()
             self.clock.tick(60)
@@ -690,6 +699,7 @@ class SetupScreen:
         """
         # Vérifier que la police des boutons est initialisée
         if not hasattr(self, 'button_font') or self.button_font is None:
+            print("Initialisation de button_font dans run_single_player")
             self.button_font = pygame.font.SysFont(None, 30)
             
         # Créer un bouton de démarrage
@@ -746,8 +756,19 @@ class SetupScreen:
             # Dessiner le tableau de configuration
             self.draw_table()
             
-            # Dessiner le bouton de démarrage
-            self.start_button.draw(self.screen, self.button_font)
+            # Vérifier à nouveau que button_font est initialisé avant de dessiner le bouton
+            if not hasattr(self, 'button_font') or self.button_font is None:
+                print("Réinitialisation de button_font avant de dessiner le bouton")
+                self.button_font = pygame.font.SysFont(None, 30)
+            
+            try:
+                # Dessiner le bouton de démarrage avec gestion d'erreur
+                self.start_button.draw(self.screen, self.button_font)
+            except AttributeError as e:
+                print(f"Erreur lors du dessin du bouton: {e}")
+                # Si button_font n'est pas défini, le créer
+                self.button_font = pygame.font.SysFont(None, 30)
+                self.start_button.draw(self.screen, self.button_font)
             
             # Mettre à jour l'affichage
             pygame.display.flip()
@@ -835,7 +856,7 @@ class GUI:
     
     @staticmethod
     def setup_game(screen_width=900, screen_height=600, setup_complete_callback=None):
-        """Affiche l'écran de configuration et crée un nouveau jeu avec les paramètres choisis
+        """Configure le jeu en créant les animaux et les ressources
         
         Args:
             screen_width: Largeur de l'écran
@@ -851,6 +872,10 @@ class GUI:
         
         # Créer et exécuter l'écran de configuration des animaux
         setup_screen = SetupScreen(screen_width, screen_height)
+        
+        # S'assurer que button_font est initialisé
+        if not hasattr(setup_screen, 'button_font') or setup_screen.button_font is None:
+            setup_screen.button_font = pygame.font.SysFont(None, 30)
         
         # En mode multijoueur, on ne configure qu'un seul animal
         if setup_complete_callback:
