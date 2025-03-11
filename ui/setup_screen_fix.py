@@ -3,11 +3,21 @@ Module pour corriger les problèmes avec la classe SetupScreen.
 """
 import pygame
 from game.config import (
+    # Couleurs
     WHITE, BLACK, GRAY, BLUE, RED, GREEN, LIGHT_GRAY, YELLOW, ORANGE, BROWN, DARK_BLUE,
+    # Points et limites minimales
     MAX_POINTS, HP_MIN, STAMINA_MIN, SPEED_MIN, TEETH_MIN, CLAWS_MIN, SKIN_MIN, HEIGHT_MIN,
-    HP_CONVERSION, STAMINA_CONVERSION, SPEED_CONVERSION, TEETH_CONVERSION, CLAWS_CONVERSION, SKIN_CONVERSION, HEIGHT_CONVERSION
+    # Limites maximales
+    HP_MAX, STAMINA_MAX, SPEED_MAX, TEETH_MAX, CLAWS_MAX, SKIN_MAX, HEIGHT_MAX,
+    # Facteurs de conversion
+    HP_CONVERSION, STAMINA_CONVERSION, SPEED_CONVERSION, TEETH_CONVERSION, CLAWS_CONVERSION, SKIN_CONVERSION, HEIGHT_CONVERSION,
+    # Positions de départ
+    LION_START_POSITION, TIGER_START_POSITION
 )
 from ui.gui import SetupScreen, Button
+from game.game import Game
+from game.animal import Animal
+from game.resources import Fruit, GreenFruit, RedFruit
 
 class FixedSetupScreen(SetupScreen):
     """Version corrigée de la classe SetupScreen qui gère correctement l'attribut button_font."""
@@ -203,10 +213,6 @@ def fixed_setup_game(screen_width=900, screen_height=600, setup_complete_callbac
         return None
     
     # Créer un nouveau jeu
-    from game.game import Game
-    from game.animal import Animal
-    from game.resources import Fruit, GreenFruit, RedFruit
-    
     game = Game()
     
     # Extraire les données des animaux
@@ -265,7 +271,9 @@ def fixed_setup_game(screen_width=900, screen_height=600, setup_complete_callbac
         game.add_animal(opponent_animal, opponent_position)
     
     # Ajouter des fruits au jeu
-    for position in [(5, 5), (10, 10), (15, 15)]:
+    # Utiliser des positions entières (1-100) au lieu de tuples (x, y)
+    fruit_positions = [25, 55, 75]  # Positions au milieu du terrain
+    for position in fruit_positions:
         fruit = Fruit(position=position)
         game.add_resource(fruit, position)
     
