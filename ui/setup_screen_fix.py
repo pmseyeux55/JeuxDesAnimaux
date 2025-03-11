@@ -25,6 +25,23 @@ class FixedSetupScreen(SetupScreen):
         # S'assurer que button_font est initialisé
         self.button_font = pygame.font.SysFont(None, 30)
         print("FixedSetupScreen: button_font initialisé dans __init__")
+        
+        # Initialiser les sliders (qui sont utilisés mais jamais initialisés dans SetupScreen)
+        self.sliders = []
+        print("FixedSetupScreen: sliders initialisé dans __init__")
+        
+        # Initialiser arrow_buttons (qui est utilisé mais jamais initialisé dans SetupScreen)
+        self.arrow_buttons = []
+        
+        # Créer les boutons fléchés pour chaque statistique
+        stats = ["hp", "stamina", "speed", "teeth", "claws", "skin", "height"]
+        for stat in stats:
+            # Bouton pour diminuer la statistique
+            self.arrow_buttons.append({"stat": stat, "change": -1, "rect": self.minus_buttons[stat].rect})
+            # Bouton pour augmenter la statistique
+            self.arrow_buttons.append({"stat": stat, "change": 1, "rect": self.plus_buttons[stat].rect})
+        
+        print("FixedSetupScreen: arrow_buttons initialisé dans __init__")
     
     def run_single_player(self):
         """Exécute l'écran de configuration pour un seul joueur avec une gestion robuste de button_font.
