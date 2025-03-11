@@ -67,6 +67,29 @@ class NetworkedGUI(GUI):
         self.info_message = ""
         self.info_message_duration = 0
         
+        # Vérifier que le client est toujours connecté
+        if not self.client.connected:
+            print("Client déconnecté lors du démarrage de la partie, tentative de reconnexion...")
+            reconnection_attempts = 0
+            max_reconnection_attempts = 5
+            
+            while reconnection_attempts < max_reconnection_attempts:
+                reconnection_attempts += 1
+                print(f"Tentative de reconnexion {reconnection_attempts}/{max_reconnection_attempts}...")
+                
+                if self.client.reconnect():
+                    print("Reconnexion réussie!")
+                    break
+                
+                # Attendre avant la prochaine tentative
+                time.sleep(2)
+            
+            if not self.client.connected:
+                print("Impossible de se reconnecter au serveur après plusieurs tentatives")
+                self.show_info_message("Impossible de se connecter au serveur. Appuyez sur Échap pour quitter.", duration=float('inf'))
+                self.connection_error = True
+                return
+        
         # Afficher un message pour indiquer que le joueur doit configurer son animal
         self.show_info_message("Configurez votre animal", duration=120)
     
@@ -136,8 +159,27 @@ class NetworkedGUI(GUI):
         """Callback appelé lorsque la connexion est perdue"""
         print("Callback on_disconnect appelé")
         print("Déconnecté du serveur")
+        
+        # Tenter de se reconnecter automatiquement
+        print("Tentative de reconnexion automatique...")
+        reconnection_attempts = 0
+        max_reconnection_attempts = 3
+        
+        while reconnection_attempts < max_reconnection_attempts:
+            reconnection_attempts += 1
+            print(f"Tentative de reconnexion {reconnection_attempts}/{max_reconnection_attempts}...")
+            
+            if self.client.reconnect():
+                print("Reconnexion réussie!")
+                self.show_info_message("Reconnecté au serveur", duration=120)
+                return
+            
+            # Attendre avant la prochaine tentative
+            time.sleep(2)
+        
+        # Si toutes les tentatives ont échoué
         self.connection_error = True
-        self.show_info_message("Déconnecté du serveur. Appuyez sur Échap pour quitter.", duration=float('inf'))
+        self.show_info_message("Impossible de se reconnecter au serveur. Appuyez sur Échap pour quitter.", duration=float('inf'))
         self.running = False
     
     def handle_click(self, pos, shift_pressed=False):
