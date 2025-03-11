@@ -124,7 +124,7 @@ class SetupScreen:
         self.font = pygame.font.SysFont(None, 36)
         self.title_font = pygame.font.SysFont(None, 48)
         self.small_font = pygame.font.SysFont(None, 24)
-        self.button_font = pygame.font.SysFont(None, 30)  # Ajout de la police pour les boutons
+        self.button_font = pygame.font.SysFont(None, 30)  # Ensure this is always initialized
         
         # Calculer les points minimums requis pour chaque animal
         min_points = (
@@ -683,90 +683,64 @@ class SetupScreen:
         return None, None  # Si la boucle est interrompue
 
     def run_single_player(self):
-        """Exécute l'écran de configuration pour un seul joueur (mode multijoueur)"""
-        running = True
+        """Exécute l'écran de configuration pour un seul joueur
         
+        Returns:
+            dict: Données de configuration du joueur, ou None si l'utilisateur a annulé
+        """
+        # Vérifier que la police des boutons est initialisée
+        if not hasattr(self, 'button_font') or self.button_font is None:
+            self.button_font = pygame.font.SysFont(None, 30)
+            
+        # Créer un bouton de démarrage
+        button_width = 200
+        button_height = 50
+        button_x = (self.screen_width - button_width) // 2
+        button_y = self.screen_height - 100
+        self.start_button = Button(button_x, button_y, button_width, button_height, "Démarrer", GREEN, (150, 255, 150))
+        
+        running = True
         while running:
             # Gérer les événements
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    return None  # Quitter sans démarrer le jeu
+                    return None
                 
-                # Gérer les clics sur les boutons
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    mouse_pos = event.pos
-                    
-                    # Vérifier si le clic est sur le champ de saisie du nom
-                    if self.name_input_rect.collidepoint(mouse_pos):
-                        self.name_input_active = not self.name_input_active
-                    else:
-                        self.name_input_active = False
-                    
-                    # Boutons pour les animaux pré-configurés
-                    if self.use_lion_button.is_hovered(mouse_pos):
-                        self.current_animal = "Lion"
-                        self.update_remaining_points()
-                    elif self.use_tiger_button.is_hovered(mouse_pos):
-                        self.current_animal = "Tiger"
-                        self.update_remaining_points()
-                    elif self.use_custom_button.is_hovered(mouse_pos):
-                        self.current_animal = "player"
-                        self.update_remaining_points()
-                    
-                    # Bouton de démarrage
-                    if self.start_button.is_hovered(mouse_pos):
-                        # Sauvegarder les paramètres du joueur et démarrer le jeu
-                        if self.current_animal == "player":
-                            return {"name": self.player1_animal_name, "params": self.player1_animal_params.copy()}
-                        else:
-                            return {"name": self.current_animal, "params": self.predefined_animals[self.current_animal].copy()}
-                    
-                    # Boutons d'incrémentation/décrémentation (seulement pour l'animal personnalisé)
-                    if self.current_animal == "player":
-                        for stat in ["hp", "stamina", "speed", "teeth", "claws", "skin", "height"]:
-                            if self.minus_buttons[stat].is_hovered(mouse_pos):
-                                self.handle_stat_change(stat, -1)
-                            elif self.plus_buttons[stat].is_hovered(mouse_pos):
-                                self.handle_stat_change(stat, 1)
+                # Gérer les clics de souris
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:  # Clic gauche
+                        # Vérifier si le bouton de démarrage a été cliqué
+                        if self.start_button.is_hovered(pygame.mouse.get_pos()):
+                            # Retourner les données de configuration
+                            return self.get_player_data()
                 
-                # Gérer la saisie du nom
-                if event.type == pygame.KEYDOWN:
-                    if self.name_input_active:
-                        if event.key == pygame.K_RETURN:
-                            self.name_input_active = False
-                        elif event.key == pygame.K_BACKSPACE:
-                            self.player1_animal_name = self.player1_animal_name[:-1]
-                        else:
-                            # Limiter la longueur du nom à 20 caractères
-                            if len(self.player1_animal_name) < 20:
-                                self.player1_animal_name += event.unicode
+                # Gérer les événements des sliders
+                for slider in self.sliders:
+                    slider.handle_event(event)
+                
+                # Gérer les événements des boutons fléchés
+                for button in self.arrow_buttons:
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        if button["rect"].collidepoint(event.pos):
+                            self.handle_stat_change(button["stat"], button["change"])
             
-            # Mettre à jour les boutons
+            # Mettre à jour les sliders
             mouse_pos = pygame.mouse.get_pos()
+            for slider in self.sliders:
+                slider.update(mouse_pos)
             
-            # Bouton de démarrage
+            # Mettre à jour le bouton de démarrage
             self.start_button.update(mouse_pos)
             
-            # Boutons pour les animaux pré-configurés
-            self.use_lion_button.update(mouse_pos)
-            self.use_tiger_button.update(mouse_pos)
-            self.use_custom_button.update(mouse_pos)
-            
-            # Boutons d'incrémentation/décrémentation
-            for stat in ["hp", "stamina", "speed", "teeth", "claws", "skin", "height"]:
-                self.minus_buttons[stat].update(mouse_pos)
-                self.plus_buttons[stat].update(mouse_pos)
-                
-                # Désactiver les boutons +/- si on n'est pas sur l'animal personnalisé
-                self.minus_buttons[stat].active = (self.current_animal == "player")
-                self.plus_buttons[stat].active = (self.current_animal == "player")
+            # Mettre à jour les points restants
+            self.update_remaining_points()
             
             # Dessiner l'écran
             self.screen.fill(WHITE)
             
             # Dessiner le titre
-            title = self.title_font.render("Configuration de votre animal", True, BLACK)
-            title_rect = title.get_rect(center=(self.screen_width // 2, 50))
+            title = self.title_font.render("Configuration de l'Animal", True, BLACK)
+            title_rect = title.get_rect(center=(self.screen_width // 2, 30))
             self.screen.blit(title, title_rect)
             
             # Dessiner le tableau de configuration
