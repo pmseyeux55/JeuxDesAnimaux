@@ -31,6 +31,7 @@ class NetworkedGUI(GUI):
         self.setup_complete = False
         self.opponent_setup_complete = False
         self.connection_error = False
+        self.game_started = False
         
         print("Enregistrement des callbacks...")
         # Enregistrer les callbacks pour les événements réseau
@@ -38,6 +39,7 @@ class NetworkedGUI(GUI):
         self.client.register_callback("game_start", self.on_game_start)
         self.client.register_callback("game_update", self.on_game_update)
         self.client.register_callback("disconnect", self.on_disconnect)
+        self.client.register_callback("both_ready", self.on_both_ready)
         
         # Ajouter un message d'attente
         self.waiting_message = "En attente d'un autre joueur..."
@@ -90,8 +92,16 @@ class NetworkedGUI(GUI):
                 self.connection_error = True
                 return
         
-        # Afficher un message pour indiquer que le joueur doit configurer son animal
-        self.show_info_message("Configurez votre animal", duration=120)
+        # Afficher un message indiquant que la partie commence
+        self.show_info_message("La partie commence! Configuration de votre animal...", duration=120)
+        
+        # Déclencher l'écran de configuration de l'animal
+        # Cette partie est gérée par le main.py qui appelle fixed_setup_game avec setup_complete_callback
+        # Nous n'avons pas besoin de faire quoi que ce soit de plus ici, car le flux de jeu est géré par main.py
+        
+        # Marquer que la partie a commencé
+        self.game_started = True
+        print("Partie marquée comme démarrée dans NetworkedGUI")
     
     def on_game_update(self, game_state):
         """Callback appelé lorsque l'état du jeu est mis à jour
@@ -158,29 +168,52 @@ class NetworkedGUI(GUI):
     def on_disconnect(self):
         """Callback appelé lorsque la connexion est perdue"""
         print("Callback on_disconnect appelé")
-        print("Déconnecté du serveur")
+        print("Connexion perdue")
         
-        # Tenter de se reconnecter automatiquement
-        print("Tentative de reconnexion automatique...")
-        reconnection_attempts = 0
-        max_reconnection_attempts = 3
-        
-        while reconnection_attempts < max_reconnection_attempts:
-            reconnection_attempts += 1
-            print(f"Tentative de reconnexion {reconnection_attempts}/{max_reconnection_attempts}...")
-            
-            if self.client.reconnect():
-                print("Reconnexion réussie!")
-                self.show_info_message("Reconnecté au serveur", duration=120)
-                return
-            
-            # Attendre avant la prochaine tentative
-            time.sleep(2)
-        
-        # Si toutes les tentatives ont échoué
+        # Marquer la connexion comme perdue
         self.connection_error = True
-        self.show_info_message("Impossible de se reconnecter au serveur. Appuyez sur Échap pour quitter.", duration=float('inf'))
-        self.running = False
+        
+        # Afficher un message d'erreur
+        self.show_info_message("Connexion perdue. Appuyez sur Échap pour quitter.", duration=float('inf'))
+        
+        # Attendre que l'utilisateur appuie sur Échap
+        try:
+            screen = pygame.display.get_surface()
+            font = pygame.font.SysFont(None, 36)
+            text = font.render("Connexion perdue. Appuyez sur Échap pour quitter.", True, (255, 0, 0))
+            text_rect = text.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
+            
+            waiting = True
+            while waiting:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                        waiting = False
+                
+                screen.fill((0, 0, 0))
+                screen.blit(text, text_rect)
+                pygame.display.flip()
+                pygame.time.delay(100)
+        except Exception as e:
+            print(f"Erreur lors de l'affichage du message de déconnexion: {e}")
+            traceback.print_exc()
+    
+    def on_both_ready(self):
+        """Callback appelé lorsque les deux joueurs ont terminé leur configuration"""
+        print("Callback on_both_ready appelé")
+        print("Les deux joueurs sont prêts, démarrage de la partie...")
+        
+        # Effacer le message d'attente
+        self.info_message = ""
+        self.info_message_duration = 0
+        
+        # Afficher un message indiquant que la partie commence
+        self.show_info_message("Les deux joueurs sont prêts! La partie commence...", duration=120)
+        
+        # Marquer que l'adversaire a terminé sa configuration
+        self.opponent_setup_complete = True
+        
+        # Démarrer la partie
+        self.game_started = True
     
     def handle_click(self, pos, shift_pressed=False):
         """Gère les clics sur le terrain
@@ -288,63 +321,21 @@ class NetworkedGUI(GUI):
             
             # Marquer la configuration comme terminée
             self.setup_complete = True
-            print("Configuration terminée, envoi de l'état au serveur...")
             
-            # Vérifier que le client est toujours connecté
-            if not self.client.connected:
-                print("Client déconnecté, tentative de reconnexion...")
-                reconnection_attempts = 0
-                max_reconnection_attempts = 5
-                
-                while reconnection_attempts < max_reconnection_attempts:
-                    reconnection_attempts += 1
-                    print(f"Tentative de reconnexion {reconnection_attempts}/{max_reconnection_attempts}...")
-                    
-                    if self.client.reconnect():
-                        print("Reconnexion réussie!")
-                        break
-                    
-                    # Attendre avant la prochaine tentative
-                    time.sleep(2)
-                
-                if not self.client.connected:
-                    print("Impossible de se reconnecter au serveur après plusieurs tentatives")
-                    self.show_info_message("Impossible de se connecter au serveur. Appuyez sur Échap pour quitter.", duration=float('inf'))
-                    self.connection_error = True
-                    return
-            
-            # Envoyer l'état du jeu au serveur avec un indicateur de configuration terminée
-            game_state = GameStateEncoder.encode_game_state(self.game)
-            game_state["setup_complete"] = True
-            success = self.client.send_action(game_state)
-            
-            if not success:
-                print("Échec de l'envoi de l'état du jeu")
-                self.show_info_message("Impossible d'envoyer l'état du jeu au serveur. Appuyez sur Échap pour quitter.", duration=float('inf'))
-                self.connection_error = True
-                return
-            
-            # Si l'adversaire a également terminé sa configuration, commencer la partie
-            if self.opponent_setup_complete:
-                print("L'adversaire a également terminé sa configuration, début de la partie")
-                # Déterminer si c'est notre tour
-                self.current_animal = self.game.get_next_animal_to_play()
-                animal_index = self.game.animals.index(self.current_animal) if self.current_animal in self.game.animals else -1
-                self.is_my_turn = (animal_index + 1) == self.player_id
-                
-                # Afficher un message
-                if self.is_my_turn:
-                    self.show_info_message("C'est votre tour", duration=120)
-                else:
-                    self.show_info_message("En attente du tour de l'adversaire", duration=120)
+            # Informer le serveur que nous avons terminé la configuration
+            # Envoyer un message différent selon que nous sommes l'hôte ou le client
+            if self.player_id == 1:  # L'hôte a l'ID 1
+                print("Envoi du signal 'host_ready' au serveur...")
+                self.client.send_action({"host_ready": True})
             else:
-                print("En attente que l'adversaire termine sa configuration...")
-                # Afficher un message d'attente
-                self.show_info_message("En attente que l'adversaire termine sa configuration...", duration=float('inf'))
+                print("Envoi du signal 'client_ready' au serveur...")
+                self.client.send_action({"client_ready": True})
+            
+            # Afficher un message d'attente
+            self.show_info_message("Configuration terminée. En attente de l'autre joueur...", duration=float('inf'))
         except Exception as e:
-            print(f"Erreur lors de la finalisation de la configuration: {e}")
+            print(f"Erreur dans setup_complete_callback: {e}")
             traceback.print_exc()
-            self.show_info_message(f"Erreur: {str(e)}", duration=120)
 
 def main():
     """Fonction principale"""
