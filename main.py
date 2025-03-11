@@ -14,7 +14,7 @@ from ui.menu import MainMenu
 from ui.lobby import Lobby  # Importer la classe Lobby
 from game.config import (
     LION_START_POSITION, TIGER_START_POSITION,
-    GREEN_FRUIT_POSITIONS, RED_FRUIT_POSITIONS
+    GREEN_FRUIT_POSITIONS, RED_FRUIT_POSITIONS, GREEN
 )
 from ui.setup_screen_fix import fixed_setup_game  # Importer la version corrigée
 
@@ -496,6 +496,9 @@ def fixed_setup_game(screen_width=900, screen_height=600, setup_complete_callbac
     # Initialiser pygame si ce n'est pas déjà fait
     if not pygame.get_init():
         pygame.init()
+    
+    # Importer les constantes nécessaires
+    from game.config import GREEN
     
     # Créer et exécuter l'écran de configuration des animaux
     from ui.gui import SetupScreen, Button
